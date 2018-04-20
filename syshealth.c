@@ -38,6 +38,7 @@ int        ps_axl_check;
 int        ps_axu_check;
 char       logdir[MAX_BUFFSIZE];
 int        days_to_compress;
+int        days_to_delete;
 int        random_sleep;
 unsigned   xseed;
 unsigned   *seed = &xseed;
@@ -164,7 +165,7 @@ int reprocess(char *procname){
 
 	
 	if(days_to_compress){
-		then = now - 86400;
+		then = now - (days_to_compress * 86400);
 		memset(aname, 0, MAX_BUFFSIZE);
 		memset(gname, 0, MAX_BUFFSIZE);
 		memset(buf, 0, MAX_BUFFSIZE);
@@ -183,6 +184,23 @@ int reprocess(char *procname){
 		}
 	}
 			
+	if(days_to_delete){
+		then = now - (days_to_delete * 86400);
+		memset(aname, 0, MAX_BUFFSIZE);
+		memset(gname, 0, MAX_BUFFSIZE);
+		memset(buf, 0, MAX_BUFFSIZE);
+		tsthen = localtime(&then);
+		sprintf(buf,"%s%s_%%m%%d",logdir, procname);
+		strftime(aname, sizeof(buf), buf, tsthen);
+		if (-1 != stat(aname, &st)){
+			sprintf(gname, "%s.tar.gz", aname);
+			fprintf(stdout, "%s\n", aname);
+			memset(buf, 0, MAX_BUFFSIZE);
+			sprintf(buf, "rm %s", gname);
+			ExecuteAndLog(buf,tname,fp,0,NULL,NULL);
+		}
+	}
+			
 	now = time(NULL);
 	ts = localtime(&now);
 	strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
@@ -193,9 +211,41 @@ int reprocess(char *procname){
 	return 0;
 
 }
+
+
+/*
+ * NAME		: Daemonize
+ * DESCRIPTION	: daemonize this process
+ */
+int Daemonize()
+{
+	pid_t pid;
+	int retval = -1;	
+	int i; 
+	long var_sysconf = 0;
+	int fd = -1; 
+
+	/* create new process */
+	pid = fork ();
+	if (pid == -1)
+		exit (-1);
+	else if (pid != 0)
+		exit (EXIT_SUCCESS);
+	
+	/* create new session and process group */
+	if (setsid() == -1)
+		exit (-1); 
+
+	/* close all open files, NR_OPEN and getdtablesize are neither posix standard */ 
+	close(0);
+
+
+	return 0;
+
+} /* Daemonize */
 int main(int argc, char *argv[])
 {
-	while ((opt = getopt(argc, argv, "hd:zUHfVuovsnNtTlxg:r")) != -1) {
+	while ((opt = getopt(argc, argv, "hd:zUHfVuovsnNtTlxg:rD:")) != -1) {
 		switch (opt) {
 		case 'h':
 			bHelp = 1;
@@ -255,6 +305,9 @@ int main(int argc, char *argv[])
 		case 'r':
 			random_sleep = 1;
 			break;
+		case 'D':
+			days_to_delete= atoi(optarg);
+			break;
 			
 		
 	        default: /* '?' */
@@ -285,6 +338,7 @@ int main(int argc, char *argv[])
 		printf("l : check ps axl\n"); 
 		printf("x : check ps axu\n"); 
 		printf("g : days to compress\n");
+		printf("D : days to delete\n");
 		printf("r : random sleep\n"); 
 	
 		printf("vmstat legend:\n");
@@ -328,6 +382,7 @@ int main(int argc, char *argv[])
 		printf("l : check ps axl\n"); 
 		printf("x : check ps axu\n"); 
 		printf("g : days to compress\n"); 
+		printf("D : days to delete\n");
 		printf("r : random sleep\n"); 
 	
 		printf("vmstat legend:\n");
@@ -357,6 +412,7 @@ int main(int argc, char *argv[])
 #endif
 	}
 	else if (random_sleep){
+		Daemonize();
 		initrand(&seed);
 		wakeup(argv[0]);
 	}
