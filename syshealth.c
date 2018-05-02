@@ -220,10 +220,6 @@ int reprocess(char *procname){
 int Daemonize()
 {
 	pid_t pid;
-	int retval = -1;	
-	int i; 
-	long var_sysconf = 0;
-	int fd = -1; 
 
 	/* create new process */
 	pid = fork ();
