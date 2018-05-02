@@ -1,0 +1,49 @@
+#!/bin/bash
+start() {
+	if [ -f /var/run/randcheck.pid ]; then
+		echo "another service is running"
+	else
+		/home/hanky/SysMon/scripts/randcheck -UuonNtlxrT -g1 -D90 -d.
+		let d=`pgrep randcheck`
+		echo $d > /var/run/randcheck.pid
+		if [ $? -eq 0 ]; then
+			echo OK
+		else
+			echo FAIL
+			kill -9 $d
+		fi
+	fi
+		
+}
+stop() {
+	if [ -f /var/run/randcheck.pid ]; then
+		let d=`cat /var/run/randcheck.pid`
+		echo $d
+		if [ $d -gt 0 ]; then
+			kill -9 $d
+			if [ $? -eq 0 ]; then
+				rm /var/run/randcheck.pid
+			fi
+		fi
+		
+	fi
+}
+
+case "$1" in 
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		start
+		;;
+	status)
+		# code to check status of app comes here 
+		# example: status program_name
+		;;
+	*)
+		echo "Usage: $0 {start|stop|status|restart}"
+esac
