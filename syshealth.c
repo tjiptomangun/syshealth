@@ -62,7 +62,31 @@ int wakeup(char *procname) {
 	return 0;
 }
 
-int reprocess(char *procname){
+char *trim(char * in){
+	int len = strlen(in);
+	int i;
+	for (i = 0; i < len ; i ++){
+		if (in[i] != ' ')
+			return &in[i];
+	}
+	return NULL;
+}
+
+char *getprocname(char *in){
+	int len = strlen(in);
+	int i;
+	for (i = len ; i > 0; i--){
+		if(in[i - 1] == '/')
+			break;
+	}
+	if (i == 1 && in[i-1] != '/'){
+		return in;
+	}
+	else
+		return &in[i];
+}
+
+int reprocess(char *dprocname){
 	time_t     now;
 	time_t     then;
 	struct tm  *ts;
@@ -72,12 +96,14 @@ int reprocess(char *procname){
 	char       tname[MAX_BUFFSIZE];
 	char       aname[MAX_BUFFSIZE];
 	char       gname[MAX_BUFFSIZE];
+	char       *procname;
 	FILE       * fp=NULL; 
 	struct     stat st;
 	
 	memset(buf, 0, MAX_BUFFSIZE);
 	memset(fname, 0, MAX_BUFFSIZE);
 	memset(tname, 0, MAX_BUFFSIZE);
+	procname = getprocname(dprocname);
 
 	now = time(NULL);
 	ts = localtime(&now);
@@ -91,6 +117,11 @@ int reprocess(char *procname){
 	strftime(fname, sizeof(buf), buf, ts);
 
 	fp = fopen((const char *)fname,"a");
+	if (!fp){
+		fprintf (stderr, "Error Opening %s\n", fname);
+		return -1;
+	}
+		
 
 	strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
 	fprintf(fp,"************ Executed %s ************\n", buf);
@@ -248,7 +279,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			logdir[0]='\0';
-			strcpy(logdir,optarg);
+			int len;
+			len = strlen(optarg);	
+			if (len && optarg[len-1] != '/')
+				sprintf(logdir, "%s/", optarg);
+			else
+				sprintf(logdir, "%s", optarg);
+				
 			break;
 		case 'z':
 			zombie_check = 1;
